@@ -2,9 +2,9 @@
 /**
  * BotCreds Agent Chat — REST API endpoints and wp-admin chat UI.
  *
- * REST namespace: agent-access/v1 (preserved for backward compatibility
- * with existing agents polling clawpress.blog). Migrate to botcreds-chat/v1
- * in a future major version.
+ * Primary REST namespace: botcreds-agent-chat/v1
+ * Legacy aliases:         agent-access/v1 (registered only when Agent Access
+ *                         plugin is NOT active, to avoid route conflicts)
  *
  * @package BotCreds_Agent_Chat
  * @since   1.0.0
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class BotCreds_Chat {
+class BotCreds_Agent_Chat {
 
 	/** @var string DB table name (without prefix). */
 	const TABLE = 'agent_access_chat';
@@ -23,6 +23,12 @@ class BotCreds_Chat {
 	 * Boot the chat subsystem.
 	 */
 	public static function init() {
+		// Don't double-init if somehow called twice.
+		static $booted = false;
+		if ( $booted ) {
+			return;
+		}
+		$booted = true;
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
@@ -33,8 +39,8 @@ class BotCreds_Chat {
 	 * ──────────────────────────────────────────────────────────────────────── */
 
 	public static function register_menu() {
-		// If Agent Access is active, nest under it. Otherwise, own top-level menu.
-		if ( function_exists( 'agent_access_init' ) || defined( 'AGENT_ACCESS_VERSION' ) ) {
+		// Nest under Agent Access if active; otherwise, own top-level menu.
+		if ( defined( 'AGENT_ACCESS_VERSION' ) ) {
 			add_submenu_page(
 				'botcreds-agent-access',
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
@@ -43,6 +49,8 @@ class BotCreds_Chat {
 				'botcreds-agent-chat',
 				array( __CLASS__, 'render_page' )
 			);
+			// Remove the old built-in Chat submenu from Agent Access if it still exists.
+			remove_submenu_page( 'botcreds-agent-access', 'agent-access-chat' );
 		} else {
 			add_menu_page(
 				__( 'BotCreds Chat', 'botcreds-agent-chat' ),
@@ -177,7 +185,7 @@ class BotCreds_Chat {
 
 			<script>
 			(function() {
-				const restUrl   = '<?php echo esc_js( rest_url( 'agent-access/v1/chat' ) ); ?>';
+				const restUrl   = '<?php echo esc_js( rest_url( 'botcreds-agent-chat/v1/chat' ) ); ?>';
 				const nonce     = '<?php echo esc_js( wp_create_nonce( 'wp_rest' ) ); ?>';
 				const sender    = '<?php echo esc_js( $display_name ); ?>';
 				const channelList = document.getElementById('bc-channels');
@@ -348,53 +356,77 @@ class BotCreds_Chat {
 	/* ──────────────────────────────────────────────────────────────────────────
 	 * REST API routes
 	 *
-	 * Namespace: agent-access/v1 — kept for backward compat with existing
-	 * agents polling clawpress.blog. Skips registration if Agent Access plugin
-	 * already registered these routes to avoid conflicts.
+	 * Primary:       botcreds-agent-chat/v1/chat/*
+	 * Legacy aliases: agent-access/v1/chat/* — only registered when Agent
+	 *                 Access is NOT active, to prevent route conflicts.
+	 *                 Remove Agent Access's chat module before relying on these.
 	 * ──────────────────────────────────────────────────────────────────────── */
 
 	public static function register_routes() {
-		// If Agent Access plugin is active, it owns these routes. Skip.
-		if ( defined( 'AGENT_ACCESS_VERSION' ) ) {
-			return;
-		}
+		$perm = array( __CLASS__, 'permission_check' );
 
-		register_rest_route( 'agent-access/v1', '/chat/channels', array(
+		// ── Primary routes ──────────────────────────────────────────────────
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/channels', array(
 			'methods'             => 'GET',
 			'callback'            => array( __CLASS__, 'api_channels' ),
-			'permission_callback' => array( __CLASS__, 'permission_check' ),
+			'permission_callback' => $perm,
 		) );
 
-		register_rest_route( 'agent-access/v1', '/chat/messages', array(
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/messages', array(
 			'methods'             => 'GET',
 			'callback'            => array( __CLASS__, 'api_messages' ),
-			'permission_callback' => array( __CLASS__, 'permission_check' ),
+			'permission_callback' => $perm,
 		) );
 
-		register_rest_route( 'agent-access/v1', '/chat/send', array(
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/send', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'api_send' ),
-			'permission_callback' => array( __CLASS__, 'permission_check' ),
+			'permission_callback' => $perm,
 		) );
 
-		register_rest_route( 'agent-access/v1', '/chat/poll', array(
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/poll', array(
 			'methods'             => 'GET',
 			'callback'            => array( __CLASS__, 'api_poll' ),
-			'permission_callback' => array( __CLASS__, 'permission_check' ),
+			'permission_callback' => $perm,
 		) );
 
-		register_rest_route( 'agent-access/v1', '/chat/channels/create', array(
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/channels/create', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'api_create_channel' ),
-			'permission_callback' => array( __CLASS__, 'permission_check' ),
+			'permission_callback' => $perm,
 		) );
+
+		// ── Legacy aliases (agent-access/v1) ────────────────────────────────
+		// Only registered when Agent Access plugin is NOT active.
+		// If Agent Access is active, it still owns these routes;
+		// remove its chat module first, then these aliases take over cleanly.
+		if ( ! defined( 'AGENT_ACCESS_VERSION' ) ) {
+			foreach ( array( 'channels', 'messages', 'poll' ) as $endpoint ) {
+				$method = 'GET';
+				register_rest_route( 'agent-access/v1', '/chat/' . $endpoint, array(
+					'methods'             => $method,
+					'callback'            => array( __CLASS__, 'api_' . $endpoint ),
+					'permission_callback' => $perm,
+				) );
+			}
+			register_rest_route( 'agent-access/v1', '/chat/send', array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'api_send' ),
+				'permission_callback' => $perm,
+			) );
+			register_rest_route( 'agent-access/v1', '/chat/channels/create', array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'api_create_channel' ),
+				'permission_callback' => $perm,
+			) );
+		}
 	}
 
 	/* ──────────────────────────────────────────────────────────────────────────
 	 * API handlers
 	 * ──────────────────────────────────────────────────────────────────────── */
 
-	public static function api_channels( $request ) {
+	public static function api_channels( $request ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 		global $wpdb;
 		$table = $wpdb->prefix . self::TABLE;
 
@@ -556,7 +588,7 @@ class BotCreds_Chat {
 	 * Install — create the chat table on activation.
 	 * ──────────────────────────────────────────────────────────────────────── */
 
-	public static function install() {
+	public static function install() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
 		global $wpdb;
 		$table   = $wpdb->prefix . self::TABLE;
 		$charset = $wpdb->get_charset_collate();
