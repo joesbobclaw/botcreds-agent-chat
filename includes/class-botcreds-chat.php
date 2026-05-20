@@ -40,7 +40,7 @@ class BotCreds_Agent_Chat {
 
 	public static function register_menu() {
 		// Nest under Agent Access if active; otherwise, own top-level menu.
-		if ( defined( 'AGENT_ACCESS_VERSION' ) ) {
+		if ( defined( 'AGENT_ACCESS_CHAT_MODULE_LOADED' ) ) {
 			add_submenu_page(
 				'botcreds-agent-access',
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
@@ -400,7 +400,7 @@ class BotCreds_Agent_Chat {
 		// Only registered when Agent Access plugin is NOT active.
 		// If Agent Access is active, it still owns these routes;
 		// remove its chat module first, then these aliases take over cleanly.
-		if ( ! defined( 'AGENT_ACCESS_VERSION' ) ) {
+		if ( ! defined( 'AGENT_ACCESS_CHAT_MODULE_LOADED' ) ) {
 			foreach ( array( 'channels', 'messages', 'poll' ) as $endpoint ) {
 				$method = 'GET';
 				register_rest_route( 'agent-access/v1', '/chat/' . $endpoint, array(
