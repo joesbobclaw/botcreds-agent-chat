@@ -3,7 +3,7 @@
  * Plugin Name: BotCreds Agent Chat
  * Plugin URI:  https://botcreds.com/agent-chat/
  * Description: Multi-channel chat between WordPress site owners and AI agents. REST API + Discord-style admin UI. Standalone companion to BotCreds Agent Access.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      Joe Boydston
  * Author URI:  https://botcreds.com
  * License:     GPL-2.0-or-later
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BOTCREDS_CHAT_VERSION', '1.1.1' );
+define( 'BOTCREDS_CHAT_VERSION', '1.1.2' );
 define( 'BOTCREDS_CHAT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BOTCREDS_CHAT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
