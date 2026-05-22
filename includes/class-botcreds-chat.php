@@ -42,7 +42,7 @@ class BotCreds_Agent_Chat {
 		// Nest under Agent Access if active; otherwise, own top-level menu.
 		if ( defined( 'AGENT_ACCESS_VERSION' ) ) {
 			add_submenu_page(
-				'botcreds-agent-access',
+				'agent-access-admin',
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
 				'read',
