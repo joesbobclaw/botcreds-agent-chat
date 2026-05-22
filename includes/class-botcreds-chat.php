@@ -41,21 +41,19 @@ class BotCreds_Agent_Chat {
 	public static function register_menu() {
 		// Nest under Agent Access if active; otherwise, own top-level menu.
 		if ( defined( 'AGENT_ACCESS_VERSION' ) ) {
-			add_submenu_page(
-				'agent-access-admin',
+			// Agent Access lives under Tools (add_management_page); add Chat there too.
+			add_management_page(
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
-				'read',
+				'manage_options',
 				'botcreds-agent-chat',
 				array( __CLASS__, 'render_page' )
 			);
-			// Remove the old built-in Chat submenu from Agent Access if it still exists.
-			remove_submenu_page( 'botcreds-agent-access', 'agent-access-chat' );
 		} else {
 			add_menu_page(
 				__( 'BotCreds Chat', 'botcreds-agent-chat' ),
 				__( 'Agent Chat', 'botcreds-agent-chat' ),
-				'read',
+				'manage_options',
 				'botcreds-agent-chat',
 				array( __CLASS__, 'render_page' ),
 				'dashicons-format-chat',
