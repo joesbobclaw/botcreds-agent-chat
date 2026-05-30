@@ -159,6 +159,12 @@ class BotCreds_Agent_Chat {
 			'permission_callback' => function() { return current_user_can( 'manage_options' ); },
 		) );
 
+
+		register_rest_route( 'botcreds-agent-chat/v1', '/chat/clear-channel', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'api_clear_channel' ),
+			'permission_callback' => function() { return current_user_can( 'manage_options' ); },
+		) );
 		// ── Legacy aliases (agent-access/v1) ────────────────────────────────
 		if ( ! defined( 'AGENT_ACCESS_VERSION' ) ) {
 			foreach ( array( 'channels', 'messages', 'poll' ) as $endpoint ) {
@@ -893,6 +899,19 @@ class BotCreds_Agent_Chat {
 	/* ──────────────────────────────────────────────────────────────────────────
 	 * Permission callback
 	 * ──────────────────────────────────────────────────────────────────────── */
+
+
+	public static function api_clear_channel( $request ) {
+		global $wpdb;
+		$channel = sanitize_text_field( $request->get_param( 'channel' ) ?: '' );
+		if ( empty( $channel ) ) {
+			return new WP_Error( 'missing_channel', 'Channel required.', array( 'status' => 400 ) );
+		}
+		$table  = $wpdb->prefix . self::TABLE;
+		$deleted = $wpdb->delete( $table, array( 'channel' => $channel ), array( '%s' ) );
+		wp_cache_flush();
+		return new WP_REST_Response( array( 'ok' => true, 'deleted' => $deleted ), 200 );
+	}
 
 	public static function permission_check() {
 		return current_user_can( 'manage_options' );
